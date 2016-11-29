@@ -1,0 +1,8 @@
+[package]
+name = "LedESP8266_backend-rs"
+version = "0.1.0"
+authors = ["jkhsjdhjs"]
+
+[dependencies]
+iron = "*"
+rustc-serialize = "0.3.21"
