@@ -1,10 +1,9 @@
-#[macro_use(itry)]
-extern crate iron;
 extern crate rustc_serialize;
-use iron::prelude::*;
-use iron::status;
-use iron::headers::ContentType;
-use iron::modifiers::Header;
+extern crate hyper;
+
+use hyper::server::{Server, Request, Response};
+use hyper::header::ContentType;
+use hyper::mime;
 use std::io::prelude::*;
 use std::net::TcpStream;
 use rustc_serialize::json;
@@ -64,32 +63,32 @@ fn test_invalid_set_payload() {
 
 /// Gets json from client and forwards it to the LED controls
 /// echos the return from the LEDs back
-fn handler(req: &mut Request) -> IronResult<Response> {
+fn handler(mut req: Request, mut res: Response) {
+    res.headers_mut().set(ContentType(mime::Mime(mime::TopLevel::Application,
+                                                 mime::SubLevel::Json,
+                                                 vec![(mime::Attr::Charset, mime::Value::Utf8)])));
     println!("New request");
-    let mut buf = String::with_capacity(4);
+    let mut buf = Vec::with_capacity(4);
     let mut payload = String::with_capacity(128);
-    itry!(req.body.read_to_string(&mut payload)); // get Input from Client
+    if let Err(e) = req.read_to_string(&mut payload) {
+        *res.status_mut() = hyper::status::StatusCode::BadRequest;
+        res.send(format!(r#"{{ "err": "Invalid Body", "msg": "{}" }}"#, e).as_bytes()).unwrap();
+        return;
+    };
     if !is_valid_payload(&payload) {
-        return Ok(Response::with((status::BadRequest,
-                                  Header(ContentType::json()),
-                                  r#"{ "err": "Invalid JSON" }"#)));
-    }
-    println!("Payload: {}", payload);
+        *res.status_mut() = hyper::status::StatusCode::BadRequest;
+        res.send(br#"{ "err": "Invalid Json" }"#).unwrap();
+        return;
+    };
     {
-        println!("connecting to esp...");
         let mut socket = TcpStream::connect("192.168.0.26:6550").unwrap();
-        println!("connected.");
-        itry!(socket.write(payload.as_bytes())); // forward input to socket
-        itry!(socket.read_to_string(&mut buf));
+        socket.write(payload.as_bytes()).unwrap(); // forward input to socket
+        socket.read(&mut buf).unwrap();
     }
-    println!("Buffer: {}", buf);
-    // Just return buf for now:
-    //
-
-    Ok(Response::with((status::Ok, Header(ContentType::json()), buf)))
+    res.send(&buf).unwrap();
 }
 
 fn main() {
-    let _server = Iron::new(handler).http("0.0.0.0:8080").unwrap();
+    Server::http("0.0.0.0:8080").unwrap().handle(handler).unwrap();
     println!("Listening on 0.0.0.0:8080");
 }

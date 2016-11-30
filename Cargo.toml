@@ -4,5 +4,5 @@ version = "0.1.1"
 authors = ["jkhsjdhjs", "belst"]
 
 [dependencies]
-iron = "*"
 rustc-serialize = "0.3.21"
+hyper = "*"
