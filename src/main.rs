@@ -83,7 +83,7 @@ fn handler(mut req: Request, mut res: Response) {
     {
         let mut socket = TcpStream::connect("192.168.0.26:6550").unwrap();
         socket.write(payload.as_bytes()).unwrap(); // forward input to socket
-        socket.read(&mut buf).unwrap();
+        socket.read_to_end(&mut buf).unwrap();
     }
     res.send(&buf).unwrap();
 }
