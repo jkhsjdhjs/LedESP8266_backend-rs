@@ -1,4 +1,5 @@
-#[macro_use(itry)] extern crate iron;
+#[macro_use(itry)]
+extern crate iron;
 extern crate rustc_serialize;
 use iron::prelude::*;
 use iron::status;
@@ -22,6 +23,45 @@ struct ColorsReq {
     data: Option<Color>,
 }
 
+fn is_valid_payload(payload: &str) -> bool {
+    json::decode::<ColorsReq>(payload)
+        .ok()
+        .and_then(|mut s| {
+            s.reqtype = s.reqtype.to_lowercase();
+            match s {
+                ref s if s.reqtype == "get" => Some(()),
+                ref s if s.reqtype == "set" && s.data.is_some() => Some(()),
+                _ => None,
+            }
+        })
+        .is_some()
+}
+
+#[test]
+fn test_valid_get_payload() {
+    let payload = r#"{ "reqtype": "get" }"#;
+    assert!(is_valid_payload(&payload));
+}
+
+#[test]
+fn test_valid_set_payload() {
+    let payload = r#"{
+            "reqtype": "set",
+            "data": {
+                "red": 255,
+                "green": 255,
+                "blue": 255,
+                "fade_time": 1000
+            }
+        }"#;
+    assert!(is_valid_payload(&payload));
+}
+#[test]
+fn test_invalid_set_payload() {
+    let payload = r#"{ "reqtype": "set" }"#;
+    assert!(!is_valid_payload(&payload))
+}
+
 /// Gets json from client and forwards it to the LED controls
 /// echos the return from the LEDs back
 fn handler(req: &mut Request) -> IronResult<Response> {
@@ -29,19 +69,11 @@ fn handler(req: &mut Request) -> IronResult<Response> {
     let mut buf = String::with_capacity(4);
     let mut payload = String::with_capacity(128);
     itry!(req.body.read_to_string(&mut payload)); // get Input from Client
-    // TODO: Validate payload
-    let () = match json::decode::<ColorsReq>(&payload) {
-        Ok(mut s) => {
-            s.reqtype = s.reqtype.to_lowercase();
-            match s {
-                ref s if s.reqtype == "get" => {}
-                ref s if s.reqtype == "set"
-                    && s.data.is_some() => {}
-                _ => return Ok(Response::with((status::BadRequest, Header(ContentType::json()))))
-            }
-        }
-        Err(e) => return Ok(Response::with((status::BadRequest, Header(ContentType::json()), format!("{}", e))))
-    }; // will return BadRequest on failure
+    if !is_valid_payload(&payload) {
+        return Ok(Response::with((status::BadRequest,
+                                  Header(ContentType::json()),
+                                  r#"{ "err": "Invalid JSON" }"#)));
+    }
     println!("Payload: {}", payload);
     {
         println!("connecting to esp...");

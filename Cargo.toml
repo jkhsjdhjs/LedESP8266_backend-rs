@@ -1,7 +1,7 @@
 [package]
-name = "LedESP8266_backend-rs"
-version = "0.1.0"
-authors = ["jkhsjdhjs"]
+name = "led_esp8266_backend_rs"
+version = "0.1.1"
+authors = ["jkhsjdhjs", "belst"]
 
 [dependencies]
 iron = "*"
