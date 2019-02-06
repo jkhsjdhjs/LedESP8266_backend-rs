@@ -1,5 +1,3 @@
-#![feature(drop_types_in_const)]
-
 extern crate ws;
 extern crate uuid;
 extern crate serde;
@@ -63,7 +61,12 @@ impl ws::Handler for WSModuleConnection {
     fn on_message(&mut self, msg: ws::Message) -> Result<(), ws::Error> {
         let msg_str: String = msg.into_text().unwrap();
         println!("MODULES: Message from connection with UUID: {}:\n{}", self.uuid, msg_str);
-        let msg_decoded: Message = serde_json::from_str(&msg_str).unwrap();
+        let result: Result<Message, serde_json::Error> = serde_json::from_str(&msg_str);
+        if result.is_err() {
+            eprintln!("MODULES: Failed to decode message!\n");
+            return Ok(());
+        }
+        let msg_decoded = result.unwrap();
         unsafe {
             let ref b = WS_CONNECTIONS;
             let d = WsConnections::new();
@@ -103,7 +106,7 @@ impl ws::Handler for WSModuleConnection {
                                             println!("sending succeeded!");
                                         }
                                         else {
-                                            println!("sending failed!");
+                                            eprintln!("sending failed!");
                                         }
                                     }
                                 },
@@ -170,7 +173,7 @@ impl ws::Handler for WSModuleConnection {
 impl WSModuleConnection {
     fn new(out: ws::Sender) -> Self {
         WSModuleConnection {
-            uuid: Uuid::new_v4().hyphenated().to_string(),
+            uuid: Uuid::new_v4().to_hyphenated().to_string(),
             out: out
         }
     }
@@ -201,7 +204,12 @@ impl ws::Handler for WSWebsiteConnection {
     fn on_message(&mut self, msg: ws::Message) -> Result<(), ws::Error> {
         let msg_str: String = msg.into_text().unwrap();
         println!("WEBSITE: Message from connection with UUID: {}:\n{}", self.uuid, msg_str);
-        let msg_decoded: Message = serde_json::from_str(&msg_str).unwrap();
+        let result: Result<Message, serde_json::Error> = serde_json::from_str(&msg_str);
+        if result.is_err() {
+            eprintln!("WEBSITE: Failed to decode message!\n");
+            return Ok(());
+        }
+        let msg_decoded = result.unwrap();
         unsafe {
             let ref b = WS_CONNECTIONS;
             let d = WsConnections::new();
@@ -274,7 +282,7 @@ impl ws::Handler for WSWebsiteConnection {
 impl WSWebsiteConnection {
     fn new(out: ws::Sender) -> Self {
         WSWebsiteConnection {
-            uuid: Uuid::new_v4().hyphenated().to_string(),
+            uuid: Uuid::new_v4().to_hyphenated().to_string(),
             out: out
         }
     }
