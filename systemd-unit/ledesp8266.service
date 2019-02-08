@@ -1,0 +1,11 @@
+[Unit]
+Description=LedESP8266 webserver backend in rust
+
+[Service]
+Type=simple
+ExecStart=%h/LedESP8266_backend-rs/target/release/led_esp8266_backend_rs
+
+[Install]
+WantedBy=default.target
+
+
